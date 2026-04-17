@@ -62,7 +62,8 @@
       showTooltips: true,
       highlightHigh: true,
       highlightMedium: true,
-      highlightLow: false
+      highlightLow: false,
+      customTerms: []
     };
   }
 
@@ -71,6 +72,7 @@
     ids.forEach((id) => {
       document.getElementById(id).checked = Boolean(settings[id]);
     });
+    document.getElementById("customTermsInput").value = (settings.customTerms || []).join("\n");
     applyPresetVisuals(settings);
   }
 
@@ -130,6 +132,21 @@
     updateNavigationState(response);
   }
 
+  async function saveCustomTerms() {
+    const current = await getSettings();
+    const next = { ...current };
+    next.customTerms = document.getElementById("customTermsInput").value
+      .split("\n")
+      .map((term) => term.trim())
+      .filter(Boolean);
+
+    await chrome.runtime.sendMessage({ type: "SAVE_SETTINGS", settings: next });
+    const rescanResult = await chrome.runtime.sendMessage({ type: "REQUEST_RESCAN" });
+    setStatus(rescanResult?.ok ? "Custom terms saved." : rescanResult?.reason || "ConsentLens could not save custom terms.");
+    await refreshPageState();
+    await refreshNavigationState();
+  }
+
   async function initializePopup() {
     ids.forEach((id) => {
       document.getElementById(id)?.addEventListener("change", persistSettings);
@@ -148,6 +165,7 @@
     document.getElementById("presetEssential").addEventListener("click", () => applyPreset("essential"));
     document.getElementById("presetBalanced").addEventListener("click", () => applyPreset("balanced"));
     document.getElementById("presetEverything").addEventListener("click", () => applyPreset("everything"));
+    document.getElementById("saveCustomTermsButton").addEventListener("click", saveCustomTerms);
 
     await syncInputs();
     const result = await chrome.runtime.sendMessage({ type: "REQUEST_RESCAN" });

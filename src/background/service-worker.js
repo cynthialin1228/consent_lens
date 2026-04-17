@@ -6,6 +6,7 @@ const DEFAULT_SETTINGS = {
   highlightHigh: true,
   highlightMedium: true,
   highlightLow: false,
+  customTerms: [],
   categories: {
     privacy: true,
     money: true,
@@ -13,7 +14,8 @@ const DEFAULT_SETTINGS = {
     "data-sharing": true,
     "legal-rights": true,
     termination: true,
-    biometrics: true
+    biometrics: true,
+    custom: true
   }
 };
 const CONTENT_SCRIPT_FILES = [

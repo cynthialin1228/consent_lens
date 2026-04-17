@@ -7,6 +7,7 @@
     highlightHigh: true,
     highlightMedium: true,
     highlightLow: false,
+    customTerms: [],
     categories: {
       privacy: true,
       money: true,
@@ -14,7 +15,8 @@
       "data-sharing": true,
       "legal-rights": true,
       termination: true,
-      biometrics: true
+      biometrics: true,
+      custom: true
     }
   };
 
@@ -32,7 +34,8 @@
     "data-sharing": "Data Sharing",
     "legal-rights": "Legal Rights",
     termination: "Termination",
-    biometrics: "Biometrics"
+    biometrics: "Biometrics",
+    custom: "Custom"
   };
 
   globalThis.ConsentLensConstants = {

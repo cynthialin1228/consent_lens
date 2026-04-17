@@ -2,11 +2,9 @@
   const dictionary = globalThis.ConsentLensDictionary;
   const { CATEGORY_LABELS } = globalThis.ConsentLensConstants;
   const { getSettings } = globalThis.ConsentLensSettings;
-  const { buildPatterns, findMatches, collectTextNodes } = globalThis.ConsentLensScanner;
+  const { buildPatterns, findMatches, collectTextNodes, collectScanRoots } = globalThis.ConsentLensScanner;
   const { clearHighlights, highlightMatches } = globalThis.ConsentLensHighlighter;
   const { attachTooltipListeners } = globalThis.ConsentLensTooltip;
-
-  const patterns = buildPatterns(dictionary);
   let observer;
   let isApplyingHighlights = false;
   let allHighlightedElements = [];
@@ -22,6 +20,22 @@
     highRiskOnly: false,
     activeCategories: new Set()
   };
+
+  function buildRuntimeDictionary(settings) {
+    const customEntries = (settings.customTerms || [])
+      .map((term) => term.trim())
+      .filter(Boolean)
+      .map((term, index) => ({
+        id: `custom-${index}-${term.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+        phrase: term,
+        variants: [],
+        category: "custom",
+        severity: "medium",
+        explanation: "Custom term added by you. Review this section closely."
+      }));
+
+    return [...dictionary, ...customEntries];
+  }
 
   function buildPageState(matchGroups) {
     const counts = {
@@ -323,6 +337,7 @@
 
     try {
       const settings = await getSettings();
+      const patterns = buildPatterns(buildRuntimeDictionary(settings));
       clearHighlights();
 
       if (!settings.enabled) {
@@ -336,18 +351,42 @@
         return;
       }
 
-      const textNodes = collectTextNodes();
+      const roots = collectScanRoots();
       const allMatches = [];
+      const seenNodes = new Set();
 
-      textNodes.forEach((node) => {
-        const matches = findMatches(node.nodeValue || "", patterns, settings);
-        if (!matches.length) {
-          return;
-        }
+      roots.forEach((root) => {
+        collectTextNodes(root).forEach((node) => {
+          if (seenNodes.has(node)) {
+            return;
+          }
 
-        allMatches.push(...matches);
-        highlightMatches(node, matches, settings.showTooltips);
+          seenNodes.add(node);
+          const matches = findMatches(node.nodeValue || "", patterns, settings);
+          if (!matches.length) {
+            return;
+          }
+
+          allMatches.push(...matches);
+          highlightMatches(node, matches, settings.showTooltips);
+        });
       });
+
+      if (!allMatches.length && roots[0] !== document.body) {
+        collectTextNodes(document.body).forEach((node) => {
+          if (seenNodes.has(node)) {
+            return;
+          }
+
+          const matches = findMatches(node.nodeValue || "", patterns, settings);
+          if (!matches.length) {
+            return;
+          }
+
+          allMatches.push(...matches);
+          highlightMatches(node, matches, settings.showTooltips);
+        });
+      }
 
       pageState = buildPageState(allMatches);
       allHighlightedElements = Array.from(document.querySelectorAll(".consent-lens-highlight"));

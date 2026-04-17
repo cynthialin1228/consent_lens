@@ -141,6 +141,19 @@ body {
   cursor: not-allowed;
 }
 
+.terms-input {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 10px 0 12px;
+  border: 1px solid #d9ccad;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #fffefb;
+  color: #2b3442;
+  font: inherit;
+  resize: vertical;
+}
+
 .button {
   width: 100%;
   border: 0;
