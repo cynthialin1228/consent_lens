@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ConsentLens</title>
+    <link rel="stylesheet" href="./popup.css">
+  </head>
+  <body>
+    <main class="popup">
+      <section class="hero">
+        <p class="eyebrow">ConsentLens</p>
+        <h1>Legal terms, made easier to notice</h1>
+        <p class="subtext">Everything stays local in your browser.</p>
+      </section>
+
+      <section class="panel">
+        <label class="toggle-row">
+          <span>Enable highlighting</span>
+          <input id="enabled" type="checkbox" checked>
+        </label>
+
+        <label class="toggle-row">
+          <span>Show hover explanations</span>
+          <input id="showTooltips" type="checkbox" checked>
+        </label>
+      </section>
+
+      <section class="panel">
+        <h2>Highlight style</h2>
+        <div class="preset-grid">
+          <button id="presetEssential" class="preset-button" type="button">Important only</button>
+          <button id="presetBalanced" class="preset-button is-active" type="button">Balanced</button>
+          <button id="presetEverything" class="preset-button" type="button">Everything</button>
+        </div>
+        <p class="helper">Balanced is the default and works best for most pages.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Current Page</h2>
+        <p id="summary" class="summary">No scan data yet.</p>
+        <p id="status" class="status" hidden></p>
+        <button id="rescanButton" class="button" type="button">Rescan page</button>
+      </section>
+    </main>
+    <script src="../shared/constants.js"></script>
+    <script src="../shared/settings.js"></script>
+    <script src="./popup.js"></script>
+  </body>
+</html>

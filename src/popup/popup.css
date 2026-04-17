@@ -1,0 +1,114 @@
+body {
+  margin: 0;
+  background: linear-gradient(180deg, #f4efe3 0%, #fffdfa 100%);
+  color: #1f2430;
+  font-family: "Segoe UI", Tahoma, sans-serif;
+}
+
+.popup {
+  width: 320px;
+  padding: 18px;
+}
+
+.hero {
+  margin-bottom: 14px;
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b4c1f;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.subtext {
+  margin: 8px 0 0;
+  color: #5f6773;
+  font-size: 13px;
+}
+
+.panel {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid #eadfc5;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.panel h2 {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.preset-button {
+  border: 1px solid #d8c8a2;
+  border-radius: 12px;
+  background: #fffaf0;
+  color: #53411b;
+  padding: 10px 8px;
+  font-size: 12px;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.preset-button.is-active {
+  border-color: #1d4f7f;
+  background: #1d4f7f;
+  color: #ffffff;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 10px 0;
+  font-size: 14px;
+}
+
+.summary {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #465063;
+}
+
+.helper {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #5f6773;
+}
+
+.status {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: #8a2d18;
+}
+
+.button {
+  width: 100%;
+  border: 0;
+  border-radius: 999px;
+  background: #1d4f7f;
+  color: #ffffff;
+  padding: 10px 14px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: #163f67;
+}
