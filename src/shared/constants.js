@@ -1,13 +1,13 @@
 (() => {
   const STORAGE_KEY = "consentLensSettings";
+  const FIRST_RUN_KEY = "consentLensFirstRun";
 
   const DEFAULT_SETTINGS = {
     enabled: true,
     showTooltips: true,
     highlightHigh: true,
-    highlightMedium: true,
+    highlightMedium: false,
     highlightLow: false,
-    customTerms: [],
     categories: {
       privacy: true,
       money: true,
@@ -15,8 +15,7 @@
       "data-sharing": true,
       "legal-rights": true,
       termination: true,
-      biometrics: true,
-      custom: true
+      biometrics: true
     }
   };
 
@@ -27,6 +26,7 @@
   };
 
   const UI_STATE_KEY = "consentLensPageState";
+
   const CATEGORY_LABELS = {
     privacy: "Privacy",
     money: "Money",
@@ -34,12 +34,12 @@
     "data-sharing": "Data Sharing",
     "legal-rights": "Legal Rights",
     termination: "Termination",
-    biometrics: "Biometrics",
-    custom: "Custom"
+    biometrics: "Biometrics"
   };
 
   globalThis.ConsentLensConstants = {
     STORAGE_KEY,
+    FIRST_RUN_KEY,
     DEFAULT_SETTINGS,
     SEVERITY_STYLES,
     UI_STATE_KEY,

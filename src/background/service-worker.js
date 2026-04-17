@@ -4,9 +4,8 @@ const DEFAULT_SETTINGS = {
   enabled: true,
   showTooltips: true,
   highlightHigh: true,
-  highlightMedium: true,
+  highlightMedium: false,
   highlightLow: false,
-  customTerms: [],
   categories: {
     privacy: true,
     money: true,
@@ -14,8 +13,7 @@ const DEFAULT_SETTINGS = {
     "data-sharing": true,
     "legal-rights": true,
     termination: true,
-    biometrics: true,
-    custom: true
+    biometrics: true
   }
 };
 const CONTENT_SCRIPT_FILES = [
@@ -113,9 +111,14 @@ async function relayToActiveTab(payload) {
   }
 }
 
-chrome.runtime.onInstalled.addListener(async () => {
+chrome.runtime.onInstalled.addListener(async (details) => {
   const settings = await getSettings();
   await saveSettings(settings);
+
+  // Clear first-run flag on fresh install so the welcome banner shows once.
+  if (details.reason === "install") {
+    await chrome.storage.sync.remove("consentLensFirstRun");
+  }
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

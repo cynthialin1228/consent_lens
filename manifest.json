@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "ConsentLens",
-  "version": "0.1.0",
-  "description": "Highlights important legal and consent terms on webpages using local analysis only.",
+  "version": "0.2.0",
+  "description": "Highlights risky legal and consent terms on webpages in plain language. Everything stays local — no data ever leaves your browser.",
   "permissions": [
     "storage",
     "activeTab",

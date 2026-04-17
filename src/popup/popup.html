@@ -8,60 +8,99 @@
   </head>
   <body>
     <main class="popup">
+
+      <!-- First-run welcome banner -->
+      <section id="welcomeBanner" class="welcome-banner" hidden>
+        <div class="welcome-banner-header">
+          <strong>Welcome to ConsentLens</strong>
+          <button id="dismissWelcome" class="welcome-dismiss" type="button" aria-label="Dismiss">✕</button>
+        </div>
+        <p class="welcome-text">Highlights risky legal and consent terms on any webpage in plain language. Everything stays local — nothing leaves your browser.</p>
+        <p class="welcome-steps">Open a privacy policy or terms page to see it in action.</p>
+      </section>
+
+      <!-- Header -->
       <section class="hero">
-        <p class="eyebrow">ConsentLens</p>
-        <h1>Legal terms, made easier to notice</h1>
-        <p class="subtext">Everything stays local in your browser.</p>
-      </section>
-
-      <section class="panel">
-        <label class="toggle-row">
-          <span>Enable highlighting</span>
-          <input id="enabled" type="checkbox" checked>
-        </label>
-
-        <label class="toggle-row">
-          <span>Show hover explanations</span>
-          <input id="showTooltips" type="checkbox" checked>
-        </label>
-      </section>
-
-      <section class="panel">
-        <h2>How To Use</h2>
-        <p class="helper no-top-space">1. Open a terms, privacy, or consent page.</p>
-        <p class="helper tight-helper">2. Use the on-page review bar or the arrows below to move term by term.</p>
-        <p class="helper tight-helper">3. Use <strong>High risk only</strong> on the page when you want the fastest scan.</p>
-      </section>
-
-      <section class="panel">
-        <h2>Highlight style</h2>
-        <div class="preset-grid">
-          <button id="presetEssential" class="preset-button" type="button">Important only</button>
-          <button id="presetBalanced" class="preset-button is-active" type="button">Balanced</button>
-          <button id="presetEverything" class="preset-button" type="button">Everything</button>
+        <div class="hero-row">
+          <div class="hero-text">
+            <p class="eyebrow">ConsentLens</p>
+            <h1>Know what you're agreeing to</h1>
+          </div>
+          <label class="toggle-pill" title="Enable or disable highlighting">
+            <input id="enabled" type="checkbox" checked>
+            <span class="toggle-pill-track"></span>
+          </label>
         </div>
-        <p class="helper">Balanced is the default and works best for most pages.</p>
       </section>
 
+      <!-- Current page results -->
       <section class="panel">
-        <h2>Current Page</h2>
-        <p id="summary" class="summary">No scan data yet.</p>
-        <div class="nav-strip">
-          <button id="prevMatchButton" class="secondary-button" type="button" aria-label="Previous flagged term">←</button>
-          <p id="navCounter" class="nav-counter">0 / 0</p>
-          <button id="nextMatchButton" class="secondary-button" type="button" aria-label="Next flagged term">→</button>
+        <div class="panel-header-row">
+          <h2>This Page</h2>
+          <button id="rescanButton" class="text-button" type="button">Rescan</button>
         </div>
-        <p class="helper">Tip: use <strong>Alt + Shift + Right/Left</strong> to move between flagged terms.</p>
+
+        <div id="noResults" class="no-results" hidden>
+          <p class="no-results-title">No flagged terms found.</p>
+          <p class="helper">Try a privacy policy, terms of service, or cookie consent page.</p>
+        </div>
+
+        <div id="resultsContent">
+          <p id="summary" class="summary">Scanning...</p>
+
+          <div id="severityBadges" class="severity-badges" hidden>
+            <span id="badgeHigh" class="badge badge-high"><span class="badge-dot"></span><span id="countHigh">0</span> High</span>
+            <span id="badgeMedium" class="badge badge-medium"><span class="badge-dot"></span><span id="countMedium">0</span> Medium</span>
+            <span id="badgeLow" class="badge badge-low"><span class="badge-dot"></span><span id="countLow">0</span> Low</span>
+          </div>
+
+          <div id="categoryBreakdown" class="category-breakdown" hidden>
+            <p class="section-label">By category</p>
+            <div id="categoryList" class="category-list"></div>
+          </div>
+
+          <div class="nav-strip">
+            <button id="prevMatchButton" class="nav-button" type="button" aria-label="Previous flagged term">&#8592; Prev</button>
+            <p id="navCounter" class="nav-counter">0 / 0</p>
+            <button id="nextMatchButton" class="nav-button nav-button-primary" type="button" aria-label="Next flagged term">Next &#8594;</button>
+          </div>
+          <p class="helper">Keyboard: <strong>Alt + Shift + Arrow</strong></p>
+        </div>
+
         <p id="status" class="status" hidden></p>
-        <button id="rescanButton" class="button" type="button">Rescan page</button>
       </section>
 
+      <!-- Scan depth -->
       <section class="panel">
-        <h2>Custom Terms</h2>
-        <p class="helper no-top-space">Add one custom word or phrase per line and ConsentLens will flag them too.</p>
-        <textarea id="customTermsInput" class="terms-input" rows="5" placeholder="dark patterns&#10;forced arbitration&#10;identity verification"></textarea>
-        <button id="saveCustomTermsButton" class="button" type="button">Save custom terms</button>
+        <h2>Scan Depth</h2>
+        <div class="preset-grid">
+          <button id="presetEssential" class="preset-button is-active" type="button">
+            <span class="preset-swatch swatch-high"></span>
+            <span class="preset-label">High risk only</span>
+            <span class="preset-desc">Fastest scan</span>
+          </button>
+          <button id="presetEverything" class="preset-button" type="button">
+            <span class="preset-swatch swatch-all"></span>
+            <span class="preset-label">Everything</span>
+            <span class="preset-desc">Most thorough</span>
+          </button>
+        </div>
       </section>
+
+      <!-- Categories -->
+      <section class="panel">
+        <h2>Categories to scan</h2>
+        <div class="category-toggles">
+          <label class="cat-row"><input type="checkbox" id="cat-legal-rights" checked><span>Legal Rights</span></label>
+          <label class="cat-row"><input type="checkbox" id="cat-money" checked><span>Money</span></label>
+          <label class="cat-row"><input type="checkbox" id="cat-privacy" checked><span>Privacy</span></label>
+          <label class="cat-row"><input type="checkbox" id="cat-data-sharing" checked><span>Data Sharing</span></label>
+          <label class="cat-row"><input type="checkbox" id="cat-tracking" checked><span>Tracking</span></label>
+          <label class="cat-row"><input type="checkbox" id="cat-termination" checked><span>Termination</span></label>
+          <label class="cat-row"><input type="checkbox" id="cat-biometrics" checked><span>Biometrics</span></label>
+        </div>
+      </section>
+
     </main>
     <script src="../shared/constants.js"></script>
     <script src="../shared/settings.js"></script>
