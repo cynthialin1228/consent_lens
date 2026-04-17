@@ -15,6 +15,18 @@
     summary.textContent = `${counts.total} terms flagged on this page. ${counts.high} high, ${counts.medium} medium, ${counts.low} low.`;
   }
 
+  function updateNavigationState(state) {
+    const navCounter = document.getElementById("navCounter");
+    const prevButton = document.getElementById("prevMatchButton");
+    const nextButton = document.getElementById("nextMatchButton");
+    const total = state?.total || 0;
+    const index = state?.index || 0;
+
+    navCounter.textContent = `${index} / ${total}`;
+    prevButton.disabled = total === 0;
+    nextButton.disabled = total === 0;
+  }
+
   function setStatus(message = "") {
     const status = document.getElementById("status");
     status.hidden = !message;
@@ -36,6 +48,11 @@
   async function refreshPageState() {
     const response = await chrome.runtime.sendMessage({ type: "GET_PAGE_STATE" });
     updateSummary(response.state);
+  }
+
+  async function refreshNavigationState() {
+    const response = await chrome.runtime.sendMessage({ type: "GET_NAVIGATION_STATE" });
+    updateNavigationState(response);
   }
 
   async function getSettings() {
@@ -70,6 +87,7 @@
     setStatus(rescanResult?.ok ? "" : rescanResult?.reason || "ConsentLens could not scan this page.");
     applyPresetVisuals(next);
     await refreshPageState();
+    await refreshNavigationState();
   }
 
   async function applyPreset(preset) {
@@ -99,6 +117,17 @@
     setStatus(rescanResult?.ok ? "" : rescanResult?.reason || "ConsentLens could not scan this page.");
     await syncInputs();
     await refreshPageState();
+    await refreshNavigationState();
+  }
+
+  async function navigate(direction) {
+    const response = await chrome.runtime.sendMessage({
+      type: "NAVIGATE_MATCH",
+      direction
+    });
+
+    setStatus(response?.ok ? "" : response?.reason || "ConsentLens could not move to the next term.");
+    updateNavigationState(response);
   }
 
   async function initializePopup() {
@@ -110,7 +139,11 @@
       const result = await chrome.runtime.sendMessage({ type: "REQUEST_RESCAN" });
       setStatus(result?.ok ? "" : result?.reason || "ConsentLens could not scan this page.");
       await refreshPageState();
+      await refreshNavigationState();
     });
+
+    document.getElementById("prevMatchButton").addEventListener("click", () => navigate("previous"));
+    document.getElementById("nextMatchButton").addEventListener("click", () => navigate("next"));
 
     document.getElementById("presetEssential").addEventListener("click", () => applyPreset("essential"));
     document.getElementById("presetBalanced").addEventListener("click", () => applyPreset("balanced"));
@@ -120,6 +153,7 @@
     const result = await chrome.runtime.sendMessage({ type: "REQUEST_RESCAN" });
     setStatus(result?.ok ? "" : result?.reason || "ConsentLens could not scan this page.");
     await refreshPageState();
+    await refreshNavigationState();
   }
 
   if (document.readyState === "loading") {

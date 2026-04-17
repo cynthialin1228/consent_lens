@@ -82,6 +82,35 @@ async function ensureContentScript(tabId) {
   }
 }
 
+async function relayToActiveTab(payload) {
+  const tab = await getActiveTab();
+
+  if (!tab?.id) {
+    return {
+      ok: false,
+      reason: "ConsentLens could not find the current browser tab."
+    };
+  }
+
+  if (!tab.url || !/^https?:/i.test(tab.url)) {
+    return {
+      ok: false,
+      reason: "ConsentLens works on normal http and https webpages."
+    };
+  }
+
+  try {
+    await ensureContentScript(tab.id);
+    const response = await chrome.tabs.sendMessage(tab.id, payload);
+    return response || { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      reason: `ConsentLens could not access this page: ${error?.message || String(error)}`
+    };
+  }
+}
+
 chrome.runtime.onInstalled.addListener(async () => {
   const settings = await getSettings();
   await saveSettings(settings);
@@ -119,35 +148,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message?.type === "REQUEST_RESCAN") {
-    getActiveTab().then(async (tab) => {
-      if (!tab?.id) {
-        sendResponse({
-          ok: false,
-          reason: "ConsentLens could not find the current browser tab."
-        });
-        return;
-      }
+    relayToActiveTab({ type: "RESCAN_PAGE" }).then(sendResponse);
+    return true;
+  }
 
-      if (!tab.url || !/^https?:/i.test(tab.url)) {
-        sendResponse({
-          ok: false,
-          reason: "ConsentLens works on normal http and https webpages."
-        });
-        return;
-      }
+  if (message?.type === "GET_NAVIGATION_STATE") {
+    relayToActiveTab({ type: "GET_NAVIGATION_STATE" }).then(sendResponse);
+    return true;
+  }
 
-      try {
-        await ensureContentScript(tab.id);
-        await chrome.tabs.sendMessage(tab.id, { type: "RESCAN_PAGE" });
-        sendResponse({ ok: true });
-      } catch (error) {
-        const reason = error?.message || String(error);
-        sendResponse({
-          ok: false,
-          reason: `ConsentLens could not access this page: ${reason}`
-        });
-      }
-    });
+  if (message?.type === "NAVIGATE_MATCH") {
+    relayToActiveTab({
+      type: "NAVIGATE_MATCH",
+      direction: message.direction
+    }).then(sendResponse);
     return true;
   }
 

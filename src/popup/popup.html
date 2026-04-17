@@ -39,6 +39,12 @@
       <section class="panel">
         <h2>Current Page</h2>
         <p id="summary" class="summary">No scan data yet.</p>
+        <div class="nav-strip">
+          <button id="prevMatchButton" class="secondary-button" type="button" aria-label="Previous flagged term">←</button>
+          <p id="navCounter" class="nav-counter">0 / 0</p>
+          <button id="nextMatchButton" class="secondary-button" type="button" aria-label="Next flagged term">→</button>
+        </div>
+        <p class="helper">Tip: use <strong>Alt + Shift + Right/Left</strong> to move between flagged terms.</p>
         <p id="status" class="status" hidden></p>
         <button id="rescanButton" class="button" type="button">Rescan page</button>
       </section>
