@@ -25,11 +25,21 @@
   };
 
   const UI_STATE_KEY = "consentLensPageState";
+  const CATEGORY_LABELS = {
+    privacy: "Privacy",
+    money: "Money",
+    tracking: "Tracking",
+    "data-sharing": "Data Sharing",
+    "legal-rights": "Legal Rights",
+    termination: "Termination",
+    biometrics: "Biometrics"
+  };
 
   globalThis.ConsentLensConstants = {
     STORAGE_KEY,
     DEFAULT_SETTINGS,
     SEVERITY_STYLES,
-    UI_STATE_KEY
+    UI_STATE_KEY,
+    CATEGORY_LABELS
   };
 })();

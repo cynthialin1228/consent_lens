@@ -91,7 +91,10 @@
       "pre",
       "code",
       "[contenteditable='true']",
-      ".consent-lens-highlight"
+      ".consent-lens-highlight",
+      ".consent-lens-toolbar",
+      ".consent-lens-toolbar-toggle",
+      ".consent-lens-tooltip"
     ].join(",");
 
     if (parent.closest(skipSelector)) {

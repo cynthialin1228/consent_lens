@@ -92,6 +92,14 @@ body {
   color: #5f6773;
 }
 
+.no-top-space {
+  margin-top: 0;
+}
+
+.tight-helper {
+  margin-top: 6px;
+}
+
 .status {
   margin: 0 0 12px;
   font-size: 12px;

@@ -1,5 +1,6 @@
 (() => {
   const dictionary = globalThis.ConsentLensDictionary;
+  const { CATEGORY_LABELS } = globalThis.ConsentLensConstants;
   const { getSettings } = globalThis.ConsentLensSettings;
   const { buildPatterns, findMatches, collectTextNodes } = globalThis.ConsentLensScanner;
   const { clearHighlights, highlightMatches } = globalThis.ConsentLensHighlighter;
@@ -8,8 +9,19 @@
   const patterns = buildPatterns(dictionary);
   let observer;
   let isApplyingHighlights = false;
+  let allHighlightedElements = [];
   let highlightedElements = [];
   let activeMatchIndex = -1;
+  let toolbarElement;
+  let toolbarToggleElement;
+  let pageState = {
+    counts: { total: 0, high: 0, medium: 0, low: 0 },
+    categories: {}
+  };
+  const viewFilters = {
+    highRiskOnly: false,
+    activeCategories: new Set()
+  };
 
   function buildPageState(matchGroups) {
     const counts = {
@@ -35,6 +47,12 @@
       type: "SAVE_PAGE_STATE",
       state
     });
+  }
+
+  function getVisibleCategoryEntries() {
+    return Object.entries(pageState.categories)
+      .filter(([, count]) => count > 0)
+      .sort((a, b) => b[1] - a[1]);
   }
 
   function updateActiveMatch(nextIndex, options = {}) {
@@ -77,21 +95,6 @@
     };
   }
 
-  function rebuildNavigationState() {
-    highlightedElements = Array.from(document.querySelectorAll(".consent-lens-highlight"));
-    highlightedElements.forEach((element, index) => {
-      element.dataset.matchIndex = String(index);
-      element.classList.remove("consent-lens-highlight-active");
-    });
-
-    if (!highlightedElements.length) {
-      activeMatchIndex = -1;
-      return;
-    }
-
-    updateActiveMatch(0, { scrollIntoView: false, focus: false });
-  }
-
   function getNavigationState() {
     if (!highlightedElements.length) {
       return {
@@ -113,6 +116,154 @@
     };
   }
 
+  function ensureToolbar() {
+    if (!toolbarElement) {
+      toolbarElement = document.createElement("aside");
+      toolbarElement.className = "consent-lens-toolbar";
+      document.documentElement.appendChild(toolbarElement);
+    }
+
+    if (!toolbarToggleElement) {
+      toolbarToggleElement = document.createElement("button");
+      toolbarToggleElement.className = "consent-lens-toolbar-toggle";
+      toolbarToggleElement.type = "button";
+      toolbarToggleElement.textContent = "Show ConsentLens";
+      toolbarToggleElement.hidden = true;
+      toolbarToggleElement.addEventListener("click", () => {
+        toolbarElement.hidden = false;
+        toolbarToggleElement.hidden = true;
+      });
+      document.documentElement.appendChild(toolbarToggleElement);
+    }
+  }
+
+  function showToolbar() {
+    ensureToolbar();
+    toolbarElement.hidden = false;
+    toolbarToggleElement.hidden = true;
+  }
+
+  function hideToolbar() {
+    ensureToolbar();
+    toolbarElement.hidden = true;
+    toolbarToggleElement.hidden = false;
+  }
+
+  function initializeCategoryFilters() {
+    const categories = getVisibleCategoryEntries().map(([category]) => category);
+    const previousSelection = new Set(
+      [...viewFilters.activeCategories].filter((category) => categories.includes(category))
+    );
+
+    viewFilters.activeCategories = previousSelection.size ? previousSelection : new Set(categories);
+  }
+
+  function renderToolbar() {
+    ensureToolbar();
+
+    const navigationState = getNavigationState();
+    const visibleCategories = getVisibleCategoryEntries();
+    const visibleCount = navigationState.total || 0;
+    const rawCount = pageState.counts.total || 0;
+    const categoryButtons = visibleCategories.map(([category, count]) => {
+      const isActive = viewFilters.activeCategories.has(category);
+      const chipClass = `consent-lens-toolbar-chip${isActive ? " is-active" : " is-hidden"}`;
+      const label = CATEGORY_LABELS[category] || category;
+      return `<button type="button" class="${chipClass}" data-action="toggle-category" data-category="${category}">${label} (${count})</button>`;
+    }).join("");
+
+    const termTitle = navigationState.matchedText || "No flagged term selected";
+    const termBody = navigationState.explanation || "Use the arrows to move through flagged terms on this page.";
+
+    toolbarElement.innerHTML = `
+      <div class="consent-lens-toolbar-header">
+        <div>
+          <p class="consent-lens-toolbar-title">ConsentLens Review Bar</p>
+          <p class="consent-lens-toolbar-subtitle">Showing ${visibleCount} of ${rawCount} flagged terms across ${visibleCategories.length} categories.</p>
+        </div>
+        <div class="consent-lens-toolbar-actions">
+          <button type="button" class="consent-lens-toolbar-button" data-action="toggle-high-risk">${viewFilters.highRiskOnly ? "Show all" : "High risk only"}</button>
+          <button type="button" class="consent-lens-toolbar-button" data-action="hide-toolbar">Hide</button>
+        </div>
+      </div>
+      <div class="consent-lens-toolbar-counter">
+        <button type="button" class="consent-lens-toolbar-button" data-action="previous" ${visibleCount ? "" : "disabled"}>Prev</button>
+        <strong>${navigationState.index || 0} / ${visibleCount}</strong>
+        <button type="button" class="consent-lens-toolbar-button is-primary" data-action="next" ${visibleCount ? "" : "disabled"}>Next</button>
+      </div>
+      <p class="consent-lens-toolbar-summary">Tip: press Alt + Shift + Right or Alt + Shift + Left to jump through flagged terms without opening the popup.</p>
+      <div class="consent-lens-toolbar-term">
+        <strong>${termTitle}</strong>
+        <span>${termBody}</span>
+      </div>
+      <div class="consent-lens-toolbar-filter-group">
+        <p class="consent-lens-toolbar-filter-label">Quick Filters</p>
+        <div class="consent-lens-toolbar-chips">${categoryButtons}</div>
+      </div>
+    `;
+
+    toolbarElement.querySelector("[data-action='previous']")?.addEventListener("click", () => {
+      updateActiveMatch(activeMatchIndex - 1, { scrollIntoView: true, focus: true });
+      renderToolbar();
+    });
+
+    toolbarElement.querySelector("[data-action='next']")?.addEventListener("click", () => {
+      updateActiveMatch(activeMatchIndex + 1, { scrollIntoView: true, focus: true });
+      renderToolbar();
+    });
+
+    toolbarElement.querySelector("[data-action='toggle-high-risk']")?.addEventListener("click", () => {
+      viewFilters.highRiskOnly = !viewFilters.highRiskOnly;
+      rebuildNavigationState();
+    });
+
+    toolbarElement.querySelector("[data-action='hide-toolbar']")?.addEventListener("click", hideToolbar);
+
+    toolbarElement.querySelectorAll("[data-action='toggle-category']").forEach((button) => {
+      button.addEventListener("click", () => {
+        const { category } = button.dataset;
+        if (viewFilters.activeCategories.has(category)) {
+          viewFilters.activeCategories.delete(category);
+        } else {
+          viewFilters.activeCategories.add(category);
+        }
+
+        if (!viewFilters.activeCategories.size) {
+          getVisibleCategoryEntries().forEach(([name]) => viewFilters.activeCategories.add(name));
+        }
+
+        rebuildNavigationState();
+      });
+    });
+  }
+
+  function rebuildNavigationState() {
+    highlightedElements = allHighlightedElements.filter((element) => {
+      const categoryAllowed = !viewFilters.activeCategories.size || viewFilters.activeCategories.has(element.dataset.category);
+      const severityAllowed = !viewFilters.highRiskOnly || element.dataset.severity === "high";
+      const isVisible = categoryAllowed && severityAllowed;
+      element.classList.toggle("consent-lens-highlight-muted", !isVisible);
+      return isVisible;
+    });
+
+    allHighlightedElements.forEach((element) => {
+      element.classList.remove("consent-lens-highlight-active");
+    });
+
+    highlightedElements.forEach((element, index) => {
+      element.dataset.matchIndex = String(index);
+    });
+
+    if (!highlightedElements.length) {
+      activeMatchIndex = -1;
+      renderToolbar();
+      return;
+    }
+
+    updateActiveMatch(0, { scrollIntoView: false, focus: false });
+    renderToolbar();
+  }
+
   function isTypingTarget(target) {
     if (!target) {
       return false;
@@ -123,6 +274,22 @@
     }
 
     return Boolean(target.closest("[contenteditable='true'], input, textarea, select"));
+  }
+
+  function isExtensionMutationTarget(node) {
+    if (!node) {
+      return false;
+    }
+
+    if (node.nodeType === Node.TEXT_NODE) {
+      return Boolean(node.parentElement?.closest(".consent-lens-toolbar, .consent-lens-toolbar-toggle, .consent-lens-tooltip"));
+    }
+
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      return Boolean(node.closest(".consent-lens-toolbar, .consent-lens-toolbar-toggle, .consent-lens-tooltip"));
+    }
+
+    return false;
   }
 
   function bindKeyboardNavigation() {
@@ -138,11 +305,13 @@
       if (event.altKey && event.shiftKey && event.key === "ArrowRight") {
         event.preventDefault();
         updateActiveMatch(activeMatchIndex + 1, { scrollIntoView: true, focus: true });
+        renderToolbar();
       }
 
       if (event.altKey && event.shiftKey && event.key === "ArrowLeft") {
         event.preventDefault();
         updateActiveMatch(activeMatchIndex - 1, { scrollIntoView: true, focus: true });
+        renderToolbar();
       }
     });
 
@@ -157,10 +326,13 @@
       clearHighlights();
 
       if (!settings.enabled) {
-        await savePageState({
+        pageState = {
           counts: { total: 0, high: 0, medium: 0, low: 0 },
           categories: {}
-        });
+        };
+        allHighlightedElements = [];
+        await savePageState(pageState);
+        renderToolbar();
         return;
       }
 
@@ -177,8 +349,12 @@
         highlightMatches(node, matches, settings.showTooltips);
       });
 
+      pageState = buildPageState(allMatches);
+      allHighlightedElements = Array.from(document.querySelectorAll(".consent-lens-highlight"));
+      initializeCategoryFilters();
+      showToolbar();
       rebuildNavigationState();
-      await savePageState(buildPageState(allMatches));
+      await savePageState(pageState);
     } finally {
       isApplyingHighlights = false;
     }
@@ -206,6 +382,15 @@
       }
 
       const hasRelevantChange = mutations.some((mutation) => {
+        if (isExtensionMutationTarget(mutation.target)) {
+          return false;
+        }
+
+        const movedNodes = [...mutation.addedNodes, ...mutation.removedNodes];
+        if (movedNodes.length && movedNodes.every((node) => isExtensionMutationTarget(node))) {
+          return false;
+        }
+
         return mutation.type === "childList" || mutation.type === "characterData";
       });
 
@@ -239,7 +424,9 @@
 
     if (message?.type === "NAVIGATE_MATCH") {
       const offset = message.direction === "previous" ? -1 : 1;
-      sendResponse(updateActiveMatch(activeMatchIndex + offset, { scrollIntoView: true, focus: true }));
+      const response = updateActiveMatch(activeMatchIndex + offset, { scrollIntoView: true, focus: true });
+      renderToolbar();
+      sendResponse(response);
       return true;
     }
 
