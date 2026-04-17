@@ -7,6 +7,7 @@
     highlightHigh: true,
     highlightMedium: true,
     highlightLow: false,
+    customTerms: [],
     categories: {
       privacy: true,
       money: true,
@@ -14,7 +15,8 @@
       "data-sharing": true,
       "legal-rights": true,
       termination: true,
-      biometrics: true
+      biometrics: true,
+      custom: true
     }
   };
 
@@ -25,11 +27,22 @@
   };
 
   const UI_STATE_KEY = "consentLensPageState";
+  const CATEGORY_LABELS = {
+    privacy: "Privacy",
+    money: "Money",
+    tracking: "Tracking",
+    "data-sharing": "Data Sharing",
+    "legal-rights": "Legal Rights",
+    termination: "Termination",
+    biometrics: "Biometrics",
+    custom: "Custom"
+  };
 
   globalThis.ConsentLensConstants = {
     STORAGE_KEY,
     DEFAULT_SETTINGS,
     SEVERITY_STYLES,
-    UI_STATE_KEY
+    UI_STATE_KEY,
+    CATEGORY_LABELS
   };
 })();

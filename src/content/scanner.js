@@ -24,6 +24,18 @@
     return sortPatternsByLength(patterns);
   }
 
+  function hasRequiredContext(text, match, entry) {
+    if (!entry.requiresContextAny?.length) {
+      return true;
+    }
+
+    const start = Math.max(0, match.start - 100);
+    const end = Math.min(text.length, match.end + 100);
+    const snippet = text.slice(start, end).toLowerCase();
+
+    return entry.requiresContextAny.some((keyword) => snippet.includes(keyword.toLowerCase()));
+  }
+
   function findMatches(text, patterns, settings) {
     const matches = [];
 
@@ -45,12 +57,18 @@
       let found;
 
       while ((found = pattern.regex.exec(text)) !== null) {
-        matches.push({
+        const match = {
           start: found.index,
           end: found.index + found[0].length,
           matchedText: found[0],
           entry: pattern.entry
-        });
+        };
+
+        if (!hasRequiredContext(text, match, pattern.entry)) {
+          continue;
+        }
+
+        matches.push(match);
       }
     });
 
@@ -91,7 +109,10 @@
       "pre",
       "code",
       "[contenteditable='true']",
-      ".consent-lens-highlight"
+      ".consent-lens-highlight",
+      ".consent-lens-toolbar",
+      ".consent-lens-toolbar-toggle",
+      ".consent-lens-tooltip"
     ].join(",");
 
     if (parent.closest(skipSelector)) {
@@ -121,9 +142,38 @@
     return textNodes;
   }
 
+  function collectScanRoots() {
+    const selector = [
+      "dialog",
+      "[role='dialog']",
+      "[aria-modal='true']",
+      "main",
+      "article",
+      "section",
+      "aside",
+      "form",
+      ".modal",
+      ".popup",
+      ".cookie",
+      ".consent",
+      ".privacy",
+      ".terms"
+    ].join(",");
+
+    const cuePattern = /(privacy|terms|consent|cookies|cookie|policy|agreement|personal information|data sharing|tracking|subscription|arbitration)/i;
+    const candidates = Array.from(document.querySelectorAll(selector)).filter((element) => cuePattern.test(element.innerText || ""));
+
+    if (!candidates.length) {
+      return [document.body];
+    }
+
+    return candidates.slice(0, 12);
+  }
+
   globalThis.ConsentLensScanner = {
     buildPatterns,
     findMatches,
-    collectTextNodes
+    collectTextNodes,
+    collectScanRoots
   };
 })();
