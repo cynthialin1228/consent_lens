@@ -15,9 +15,6 @@
     "activeTab",
     "scripting"
   ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
   "background": {
     "service_worker": "src/background/service-worker.js"
   },
@@ -30,21 +27,5 @@
       "48":  "assets/icon48.png",
       "128": "assets/icon128.png"
     }
-  },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": [
-        "src/shared/constants.js",
-        "src/shared/terms-dictionary.js",
-        "src/shared/settings.js",
-        "src/content/scanner.js",
-        "src/content/highlighter.js",
-        "src/content/tooltip.js",
-        "src/content/content.js"
-      ],
-      "css": ["src/content/content.css"],
-      "run_at": "document_idle"
-    }
-  ]
+  }
 }

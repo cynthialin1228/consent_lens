@@ -75,7 +75,7 @@ async function ensureContentScript(tabId) {
     // Ignore — CSS may already be injected.
   }
 
-  // Inject scripts.
+  // Inject scripts using activeTab permission (granted by user gesture).
   try {
     await chrome.scripting.executeScript({ target: { tabId }, files: CONTENT_SCRIPT_FILES });
   } catch (err) {
