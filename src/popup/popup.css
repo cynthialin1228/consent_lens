@@ -318,9 +318,11 @@ body {
 
 .nav-button-primary:hover { background: #174d87; }
 
-.nav-button:disabled {
+.nav-button:disabled,
+.nav-button:disabled:hover {
   opacity: 0.38;
   cursor: not-allowed;
+  background: #f7f4ef;
 }
 
 .nav-counter {

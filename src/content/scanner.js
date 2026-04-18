@@ -1,6 +1,5 @@
 (() => {
   // Escapes special regex characters in a string.
-  // Written without the $& backreference to avoid a known tool corruption issue.
   function escapeRegExp(value) {
     return value.replace(/[.*+?^${}()|[\]\\]/g, function (char) {
       return "\\" + char;
@@ -76,7 +75,7 @@
       }
     });
 
-    // Sort by position, longest match wins on ties
+    // Sort by position; longest match wins on ties
     matches.sort((a, b) => {
       if (a.start !== b.start) return a.start - b.start;
       return b.end - a.end;
@@ -100,7 +99,6 @@
     const parent = node.parentElement;
     if (!parent) return true;
 
-    // Skip extension's own elements and non-content elements
     const skipSelector = [
       "script",
       "style",
@@ -123,8 +121,7 @@
     const value = node.nodeValue;
     if (!value || !value.trim()) return true;
 
-    // getComputedStyle is expensive — only call it when the node passes all
-    // cheaper checks above. Also check opacity so invisible elements are skipped.
+    // getComputedStyle is expensive — only call after cheaper checks pass.
     const style = window.getComputedStyle(parent);
     if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") {
       return true;
@@ -165,8 +162,7 @@
       ".terms"
     ].join(",");
 
-    // Use textContent instead of innerText — textContent does not trigger
-    // layout reflow, making this significantly faster on large pages.
+    // textContent avoids layout reflow; innerText would force it on every element.
     const cuePattern = /(privacy|terms|consent|cookies|cookie|policy|agreement|personal information|data sharing|tracking|subscription|arbitration)/i;
     const candidates = Array.from(document.querySelectorAll(selector)).filter(
       (element) => cuePattern.test(element.textContent || "")
