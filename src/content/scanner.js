@@ -1,6 +1,10 @@
 (() => {
+  // Escapes special regex characters in a string.
+  // Written without the $& backreference to avoid a known tool corruption issue.
   function escapeRegExp(value) {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return value.replace(/[.*+?^${}()|[\]\\]/g, function (char) {
+      return "\\" + char;
+    });
   }
 
   function sortPatternsByLength(patterns) {
@@ -15,7 +19,7 @@
       phrases.forEach((phrase) => {
         patterns.push({
           text: phrase,
-          regex: new RegExp(`\\b${escapeRegExp(phrase)}\\b`, "gi"),
+          regex: new RegExp("\\b" + escapeRegExp(phrase) + "\\b", "gi"),
           entry
         });
       });
@@ -29,8 +33,8 @@
       return true;
     }
 
-    const start = Math.max(0, match.start - 100);
-    const end = Math.min(text.length, match.end + 100);
+    const start = Math.max(0, match.start - 150);
+    const end = Math.min(text.length, match.end + 150);
     const snippet = text.slice(start, end).toLowerCase();
 
     return entry.requiresContextAny.some((keyword) => snippet.includes(keyword.toLowerCase()));
@@ -72,14 +76,13 @@
       }
     });
 
+    // Sort by position, longest match wins on ties
     matches.sort((a, b) => {
-      if (a.start !== b.start) {
-        return a.start - b.start;
-      }
-
+      if (a.start !== b.start) return a.start - b.start;
       return b.end - a.end;
     });
 
+    // Remove overlapping matches — keep the first (longest) at each position
     const filtered = [];
     let lastEnd = -1;
 
@@ -95,10 +98,9 @@
 
   function isSkippableNode(node) {
     const parent = node.parentElement;
-    if (!parent) {
-      return true;
-    }
+    if (!parent) return true;
 
+    // Skip extension's own elements and non-content elements
     const skipSelector = [
       "script",
       "style",
@@ -108,6 +110,7 @@
       "option",
       "pre",
       "code",
+      "noscript",
       "[contenteditable='true']",
       ".consent-lens-highlight",
       ".consent-lens-toolbar",
@@ -115,17 +118,19 @@
       ".consent-lens-tooltip"
     ].join(",");
 
-    if (parent.closest(skipSelector)) {
-      return true;
-    }
+    if (parent.closest(skipSelector)) return true;
 
     const value = node.nodeValue;
-    if (!value || !value.trim()) {
+    if (!value || !value.trim()) return true;
+
+    // getComputedStyle is expensive — only call it when the node passes all
+    // cheaper checks above. Also check opacity so invisible elements are skipped.
+    const style = window.getComputedStyle(parent);
+    if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") {
       return true;
     }
 
-    const style = window.getComputedStyle(parent);
-    return style.visibility === "hidden" || style.display === "none";
+    return false;
   }
 
   function collectTextNodes(root = document.body) {
@@ -160,8 +165,12 @@
       ".terms"
     ].join(",");
 
+    // Use textContent instead of innerText — textContent does not trigger
+    // layout reflow, making this significantly faster on large pages.
     const cuePattern = /(privacy|terms|consent|cookies|cookie|policy|agreement|personal information|data sharing|tracking|subscription|arbitration)/i;
-    const candidates = Array.from(document.querySelectorAll(selector)).filter((element) => cuePattern.test(element.innerText || ""));
+    const candidates = Array.from(document.querySelectorAll(selector)).filter(
+      (element) => cuePattern.test(element.textContent || "")
+    );
 
     if (!candidates.length) {
       return [document.body];

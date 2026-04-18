@@ -194,10 +194,20 @@
 
   function initializeCategoryFilters() {
     const categories = getVisibleCategoryEntries().map(([category]) => category);
-    const previousSelection = new Set(
+
+    // Preserve any existing user selection that still has matches.
+    // Only reset to "all" on the very first scan (empty set).
+    const preserved = new Set(
       [...viewFilters.activeCategories].filter((category) => categories.includes(category))
     );
-    viewFilters.activeCategories = previousSelection.size ? previousSelection : new Set(categories);
+
+    if (preserved.size > 0) {
+      // Keep the user's existing filter — don't wipe it on rescan.
+      viewFilters.activeCategories = preserved;
+    } else {
+      // First scan or all previously selected categories disappeared — show all.
+      viewFilters.activeCategories = new Set(categories);
+    }
   }
 
   function renderToolbar() {
@@ -205,20 +215,29 @@
 
     const navigationState = getNavigationState();
     const visibleCategories = getVisibleCategoryEntries();
-    // visibleCount = what the nav arrows actually navigate (filtered)
     const visibleCount = navigationState.total || 0;
-    // rawCount = everything found on the page before any toolbar filter
     const rawCount = pageState.counts.total || 0;
 
     const categoryButtons = visibleCategories.map(([category, count]) => {
       const isActive = viewFilters.activeCategories.has(category);
-      const chipClass = `consent-lens-toolbar-chip${isActive ? " is-active" : " is-hidden"}`;
+      const chipClass = "consent-lens-toolbar-chip" + (isActive ? " is-active" : " is-hidden");
       const label = CATEGORY_LABELS[category] || category;
       return `<button type="button" class="${chipClass}" data-action="toggle-category" data-category="${category}">${label} (${count})</button>`;
     }).join("");
 
-    const termTitle = navigationState.matchedText || "No term selected";
-    const termBody = navigationState.explanation || "Use the arrows to step through flagged terms.";
+    // Sanitize page-sourced text before injecting into innerHTML to prevent XSS.
+    // matchedText and explanation come from dataset attributes set via textContent,
+    // but we sanitize defensively here anyway.
+    function esc(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    const termTitle = esc(navigationState.matchedText) || "No term selected";
+    const termBody = esc(navigationState.explanation) || "Use the arrows to step through flagged terms.";
 
     toolbarElement.innerHTML = `
       <div class="consent-lens-toolbar-header">
