@@ -2,6 +2,39 @@
 
 All notable changes to ConsentLens are documented in this file.
 
+## [1.0.0] — 2026-04-21
+
+### Release Status
+- ✅ **Published on Chrome Web Store**
+- ✅ **Production-ready**
+- ✅ **Approved by Google**
+
+### Features
+- **62+ legal and consent terms** across 7 categories
+- **Color-coded severity levels** (red/amber/blue)
+- **Plain-language explanations** for every flagged term
+- **Smart filtering** — "High risk only" mode or category-based filtering
+- **Keyboard navigation** — Alt+Shift+Arrow keys to jump between terms
+- **On-page toolbar** — floating review bar with filters and navigation
+- **Dark mode support** — highlights remain visible on any background
+- **Context-aware detection** — reduces false positives
+- **100% local processing** — no data collection, no servers, no tracking
+- **Works offline** — no internet connection required
+
+### Documentation
+- Comprehensive README with installation, usage, and troubleshooting
+- Detailed ROADMAP with v1.1 → v2.0 plans
+- Complete CHANGELOG documenting all changes
+- Privacy policy and security information
+
+### Known Limitations
+- Webpages only (PDF support in v2.0)
+- English language only
+- Dictionary-based detection (no AI)
+- Best on structured pages (privacy policies, ToS, cookie banners)
+
+---
+
 ## [0.2.0] — 2025-02-XX
 
 ### Added
@@ -64,3 +97,4 @@ All notable changes to ConsentLens are documented in this file.
 - Dynamic page content rescanning
 - Local settings storage
 - Popup with basic controls
+

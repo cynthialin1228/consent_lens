@@ -40,12 +40,18 @@ Most people don't read terms of service, privacy policies, or cookie banners. Th
 
 ## Installation
 
-1. Open `chrome://extensions` in your browser
-2. Turn on **Developer Mode** (top right)
-3. Click **Load unpacked**
-4. Select this project folder
-5. Open a privacy policy, terms of service, or cookie consent page
-6. Refresh the page to see ConsentLens in action
+### From Chrome Web Store (Recommended)
+Install ConsentLens directly from the Chrome Web Store:
+**[ConsentLens on Chrome Web Store](https://chrome.google.com/webstore/detail/kbgehhdlonjaikpkijhenigglpmbiigc)**
+
+### From Source (Development)
+1. Clone this repository
+2. Open `chrome://extensions` in your browser
+3. Turn on **Developer Mode** (top right)
+4. Click **Load unpacked**
+5. Select this project folder
+6. Open a privacy policy, terms of service, or cookie consent page
+7. Refresh the page to see ConsentLens in action
 
 ## How to Use
 
