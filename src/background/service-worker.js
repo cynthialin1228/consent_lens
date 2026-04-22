@@ -1,12 +1,13 @@
 const STORAGE_KEY = "consentLensSettings";
 const UI_STATE_KEY = "consentLensPageState";
+const FIRST_RUN_KEY = "consentLensFirstRun";
+
 const DEFAULT_SETTINGS = {
   enabled: true,
   showTooltips: true,
   highlightHigh: true,
-  highlightMedium: true,
+  highlightMedium: false,
   highlightLow: false,
-  customTerms: [],
   categories: {
     privacy: true,
     money: true,
@@ -14,10 +15,10 @@ const DEFAULT_SETTINGS = {
     "data-sharing": true,
     "legal-rights": true,
     termination: true,
-    biometrics: true,
-    custom: true
+    biometrics: true
   }
 };
+
 const CONTENT_SCRIPT_FILES = [
   "src/shared/constants.js",
   "src/shared/terms-dictionary.js",
@@ -27,14 +28,16 @@ const CONTENT_SCRIPT_FILES = [
   "src/content/tooltip.js",
   "src/content/content.js"
 ];
+
 const CONTENT_CSS_FILES = [
   "src/content/content.css"
 ];
 
+// ─── Settings ──────────────────────────────────────────────────────────────
+
 async function getSettings() {
   const stored = await chrome.storage.sync.get(STORAGE_KEY);
   const saved = stored[STORAGE_KEY] || {};
-
   return {
     ...DEFAULT_SETTINGS,
     ...saved,
@@ -46,41 +49,45 @@ async function getSettings() {
 }
 
 async function saveSettings(settings) {
-  await chrome.storage.sync.set({
-    [STORAGE_KEY]: settings
-  });
+  await chrome.storage.sync.set({ [STORAGE_KEY]: settings });
 }
 
-async function getActiveTab() {
-  const tabs = await chrome.tabs.query({
-    active: true,
-    lastFocusedWindow: true
-  });
+// ─── Tab helpers ───────────────────────────────────────────────────────────
 
+async function getActiveTab() {
+  const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
   return tabs[0] || null;
 }
 
 async function ensureContentScript(tabId) {
+  // First try pinging — if the content script is already running, we're done.
   try {
     await chrome.tabs.sendMessage(tabId, { type: "PING_CONSENT_LENS" });
     return true;
-  } catch (error) {
-    try {
-      await chrome.scripting.insertCSS({
-        target: { tabId },
-        files: CONTENT_CSS_FILES
-      });
-    } catch (cssError) {
-      // Ignore duplicate CSS insertion failures and continue to script injection.
-    }
+  } catch {
+    // Not running yet — inject it.
+  }
 
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      files: CONTENT_SCRIPT_FILES
-    });
+  // Inject CSS first (failures are non-fatal — duplicate injection is fine).
+  try {
+    await chrome.scripting.insertCSS({ target: { tabId }, files: CONTENT_CSS_FILES });
+  } catch {
+    // Ignore — CSS may already be injected.
+  }
 
+  // Inject scripts using activeTab permission (granted by user gesture).
+  try {
+    await chrome.scripting.executeScript({ target: { tabId }, files: CONTENT_SCRIPT_FILES });
+  } catch (err) {
+    throw new Error("Could not inject content script: " + (err?.message || String(err)));
+  }
+
+  // Confirm the script is now responding.
+  try {
     await chrome.tabs.sendMessage(tabId, { type: "PING_CONSENT_LENS" });
     return true;
+  } catch (err) {
+    throw new Error("Content script injected but not responding: " + (err?.message || String(err)));
   }
 }
 
@@ -88,17 +95,11 @@ async function relayToActiveTab(payload) {
   const tab = await getActiveTab();
 
   if (!tab?.id) {
-    return {
-      ok: false,
-      reason: "ConsentLens could not find the current browser tab."
-    };
+    return { ok: false, reason: "ConsentLens could not find the current browser tab." };
   }
 
   if (!tab.url || !/^https?:/i.test(tab.url)) {
-    return {
-      ok: false,
-      reason: "ConsentLens works on normal http and https webpages."
-    };
+    return { ok: false, reason: "ConsentLens works on normal http and https webpages." };
   }
 
   try {
@@ -106,17 +107,23 @@ async function relayToActiveTab(payload) {
     const response = await chrome.tabs.sendMessage(tab.id, payload);
     return response || { ok: true };
   } catch (error) {
-    return {
-      ok: false,
-      reason: `ConsentLens could not access this page: ${error?.message || String(error)}`
-    };
+    return { ok: false, reason: "ConsentLens could not access this page: " + (error?.message || String(error)) };
   }
 }
 
-chrome.runtime.onInstalled.addListener(async () => {
+// ─── Lifecycle ─────────────────────────────────────────────────────────────
+
+chrome.runtime.onInstalled.addListener(async (details) => {
   const settings = await getSettings();
   await saveSettings(settings);
+
+  if (details.reason === "install") {
+    // Clear first-run flag so the welcome banner shows exactly once.
+    await chrome.storage.sync.remove(FIRST_RUN_KEY);
+  }
 });
+
+// ─── Message router ────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "GET_SETTINGS") {
@@ -131,7 +138,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message?.type === "SAVE_PAGE_STATE" && sender.tab?.id) {
     chrome.storage.session.set({
-      [`${UI_STATE_KEY}:${sender.tab.id}`]: message.state
+      [UI_STATE_KEY + ":" + sender.tab.id]: message.state
     }).then(() => sendResponse({ ok: true }));
     return true;
   }
@@ -142,9 +149,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ state: null });
         return;
       }
-
-      const result = await chrome.storage.session.get(`${UI_STATE_KEY}:${tab.id}`);
-      sendResponse({ state: result[`${UI_STATE_KEY}:${tab.id}`] || null });
+      const key = UI_STATE_KEY + ":" + tab.id;
+      const result = await chrome.storage.session.get(key);
+      sendResponse({ state: result[key] || null });
     });
     return true;
   }
@@ -160,10 +167,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message?.type === "NAVIGATE_MATCH") {
-    relayToActiveTab({
-      type: "NAVIGATE_MATCH",
-      direction: message.direction
-    }).then(sendResponse);
+    relayToActiveTab({ type: "NAVIGATE_MATCH", direction: message.direction }).then(sendResponse);
     return true;
   }
 

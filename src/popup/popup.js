@@ -1,30 +1,75 @@
 (() => {
-  const ids = [
-    "enabled",
-    "showTooltips"
+  const { CATEGORY_LABELS, FIRST_RUN_KEY } = globalThis.ConsentLensConstants;
+
+  // Category ids that map to checkbox ids in the HTML
+  const CATEGORY_IDS = [
+    "legal-rights",
+    "money",
+    "privacy",
+    "data-sharing",
+    "tracking",
+    "termination",
+    "biometrics"
   ];
+
+  // ─── Summary & state display ───────────────────────────────────────────────
 
   function updateSummary(state) {
     const summary = document.getElementById("summary");
-    if (!state) {
-      summary.textContent = "No scan data yet.";
+    const severityBadges = document.getElementById("severityBadges");
+    const categoryBreakdown = document.getElementById("categoryBreakdown");
+    const noResults = document.getElementById("noResults");
+
+    if (!state || state.counts.total === 0) {
+      const hasState = Boolean(state);
+      summary.textContent = hasState ? "" : "No scan data yet.";
+      noResults.hidden = !hasState;
+      severityBadges.hidden = true;
+      categoryBreakdown.hidden = true;
       return;
     }
 
-    const { counts } = state;
-    summary.textContent = `${counts.total} terms flagged on this page. ${counts.high} high, ${counts.medium} medium, ${counts.low} low.`;
+    const { counts, categories } = state;
+    noResults.hidden = true;
+    // Summary shows raw page total — independent of any toolbar filters
+    summary.textContent = `${counts.total} term${counts.total !== 1 ? "s" : ""} found on this page.`;
+
+    document.getElementById("countHigh").textContent = counts.high;
+    document.getElementById("countMedium").textContent = counts.medium;
+    document.getElementById("countLow").textContent = counts.low;
+    document.getElementById("badgeHigh").hidden = counts.high === 0;
+    document.getElementById("badgeMedium").hidden = counts.medium === 0;
+    document.getElementById("badgeLow").hidden = counts.low === 0;
+    severityBadges.hidden = false;
+
+    const categoryList = document.getElementById("categoryList");
+    const sorted = Object.entries(categories)
+      .filter(([, count]) => count > 0)
+      .sort((a, b) => b[1] - a[1]);
+
+    if (sorted.length > 0) {
+      categoryList.innerHTML = sorted.map(([cat, count]) => {
+        const label = CATEGORY_LABELS[cat] || cat;
+        return `<div class="category-row">
+          <span class="category-bullet"></span>
+          <span class="category-name">${label}</span>
+          <span class="category-count">${count}</span>
+        </div>`;
+      }).join("");
+      categoryBreakdown.hidden = false;
+    } else {
+      categoryBreakdown.hidden = true;
+    }
   }
 
   function updateNavigationState(state) {
-    const navCounter = document.getElementById("navCounter");
-    const prevButton = document.getElementById("prevMatchButton");
-    const nextButton = document.getElementById("nextMatchButton");
+    // total here is highlightedElements.length from content.js — the filtered
+    // navigable count, which may differ from pageState.counts.total
     const total = state?.total || 0;
     const index = state?.index || 0;
-
-    navCounter.textContent = `${index} / ${total}`;
-    prevButton.disabled = total === 0;
-    nextButton.disabled = total === 0;
+    document.getElementById("navCounter").textContent = `${index} / ${total}`;
+    document.getElementById("prevMatchButton").disabled = total === 0;
+    document.getElementById("nextMatchButton").disabled = total === 0;
   }
 
   function setStatus(message = "") {
@@ -33,27 +78,16 @@
     status.textContent = message;
   }
 
+  // ─── Preset visuals ────────────────────────────────────────────────────────
+
   function applyPresetVisuals(settings) {
-    const presets = {
-      presetEssential: settings.highlightHigh && !settings.highlightMedium && !settings.highlightLow,
-      presetBalanced: settings.highlightHigh && settings.highlightMedium && !settings.highlightLow,
-      presetEverything: settings.highlightHigh && settings.highlightMedium && settings.highlightLow
-    };
-
-    Object.entries(presets).forEach(([id, active]) => {
-      document.getElementById(id).classList.toggle("is-active", active);
-    });
+    // "Essential" = high only. "Everything" = high + medium + low.
+    const isEssential = settings.highlightHigh && !settings.highlightMedium && !settings.highlightLow;
+    document.getElementById("presetEssential").classList.toggle("is-active", isEssential);
+    document.getElementById("presetEverything").classList.toggle("is-active", !isEssential);
   }
 
-  async function refreshPageState() {
-    const response = await chrome.runtime.sendMessage({ type: "GET_PAGE_STATE" });
-    updateSummary(response.state);
-  }
-
-  async function refreshNavigationState() {
-    const response = await chrome.runtime.sendMessage({ type: "GET_NAVIGATION_STATE" });
-    updateNavigationState(response);
-  }
+  // ─── Settings ──────────────────────────────────────────────────────────────
 
   async function getSettings() {
     const response = await chrome.runtime.sendMessage({ type: "GET_SETTINGS" });
@@ -61,18 +95,24 @@
       enabled: true,
       showTooltips: true,
       highlightHigh: true,
-      highlightMedium: true,
+      highlightMedium: false,
       highlightLow: false,
-      customTerms: []
+      categories: {}
     };
   }
 
   async function syncInputs() {
     const settings = await getSettings();
-    ids.forEach((id) => {
-      document.getElementById(id).checked = Boolean(settings[id]);
+
+    const enabledEl = document.getElementById("enabled");
+    if (enabledEl) enabledEl.checked = Boolean(settings.enabled);
+
+    // Category checkboxes
+    CATEGORY_IDS.forEach((cat) => {
+      const el = document.getElementById(`cat-${cat}`);
+      if (el) el.checked = settings.categories?.[cat] !== false;
     });
-    document.getElementById("customTermsInput").value = (settings.customTerms || []).join("\n");
+
     applyPresetVisuals(settings);
   }
 
@@ -80,16 +120,20 @@
     const current = await getSettings();
     const next = { ...current };
 
-    ids.forEach((id) => {
-      next[id] = document.getElementById(id).checked;
+    next.enabled = document.getElementById("enabled").checked;
+
+    // Collect category states
+    next.categories = { ...current.categories };
+    CATEGORY_IDS.forEach((cat) => {
+      const el = document.getElementById(`cat-${cat}`);
+      if (el) next.categories[cat] = el.checked;
     });
 
     await chrome.runtime.sendMessage({ type: "SAVE_SETTINGS", settings: next });
     const rescanResult = await chrome.runtime.sendMessage({ type: "REQUEST_RESCAN" });
     setStatus(rescanResult?.ok ? "" : rescanResult?.reason || "ConsentLens could not scan this page.");
     applyPresetVisuals(next);
-    await refreshPageState();
-    await refreshNavigationState();
+    await refreshAll();
   }
 
   async function applyPreset(preset) {
@@ -100,15 +144,7 @@
       next.highlightHigh = true;
       next.highlightMedium = false;
       next.highlightLow = false;
-    }
-
-    if (preset === "balanced") {
-      next.highlightHigh = true;
-      next.highlightMedium = true;
-      next.highlightLow = false;
-    }
-
-    if (preset === "everything") {
+    } else if (preset === "everything") {
       next.highlightHigh = true;
       next.highlightMedium = true;
       next.highlightLow = true;
@@ -118,60 +154,85 @@
     const rescanResult = await chrome.runtime.sendMessage({ type: "REQUEST_RESCAN" });
     setStatus(rescanResult?.ok ? "" : rescanResult?.reason || "ConsentLens could not scan this page.");
     await syncInputs();
-    await refreshPageState();
-    await refreshNavigationState();
+    await refreshAll();
   }
 
-  async function navigate(direction) {
-    const response = await chrome.runtime.sendMessage({
-      type: "NAVIGATE_MATCH",
-      direction
-    });
+  // ─── Navigation ────────────────────────────────────────────────────────────
 
-    setStatus(response?.ok ? "" : response?.reason || "ConsentLens could not move to the next term.");
+  async function navigate(direction) {
+    const response = await chrome.runtime.sendMessage({ type: "NAVIGATE_MATCH", direction });
+    if (!response?.ok) {
+      setStatus(response?.reason || "ConsentLens could not move to the next term.");
+      return;
+    }
+    setStatus("");
+    // Use the response directly — it comes straight from updateActiveMatch in
+    // content.js and already reflects the current filtered highlightedElements.
     updateNavigationState(response);
   }
 
-  async function saveCustomTerms() {
-    const current = await getSettings();
-    const next = { ...current };
-    next.customTerms = document.getElementById("customTermsInput").value
-      .split("\n")
-      .map((term) => term.trim())
-      .filter(Boolean);
+  // ─── Refresh ───────────────────────────────────────────────────────────────
 
-    await chrome.runtime.sendMessage({ type: "SAVE_SETTINGS", settings: next });
-    const rescanResult = await chrome.runtime.sendMessage({ type: "REQUEST_RESCAN" });
-    setStatus(rescanResult?.ok ? "Custom terms saved." : rescanResult?.reason || "ConsentLens could not save custom terms.");
-    await refreshPageState();
-    await refreshNavigationState();
+  async function refreshAll() {
+    // Run both in parallel. GET_NAVIGATION_STATE goes directly to the content
+    // script (via service worker relay) so it always reflects the live filtered
+    // highlightedElements count — not the stale session-stored pageState.
+    const [pageStateResponse, navStateResponse] = await Promise.all([
+      chrome.runtime.sendMessage({ type: "GET_PAGE_STATE" }),
+      chrome.runtime.sendMessage({ type: "GET_NAVIGATION_STATE" })
+    ]);
+    updateSummary(pageStateResponse?.state ?? null);
+    updateNavigationState(navStateResponse);
   }
 
-  async function initializePopup() {
-    ids.forEach((id) => {
-      document.getElementById(id)?.addEventListener("change", persistSettings);
-    });
+  // ─── Welcome banner ────────────────────────────────────────────────────────
 
+  async function maybeShowWelcomeBanner() {
+    const result = await chrome.storage.sync.get(FIRST_RUN_KEY);
+    if (!result[FIRST_RUN_KEY]) {
+      document.getElementById("welcomeBanner").hidden = false;
+    }
+  }
+
+  async function dismissWelcomeBanner() {
+    document.getElementById("welcomeBanner").hidden = true;
+    await chrome.storage.sync.set({ [FIRST_RUN_KEY]: true });
+  }
+
+  // ─── Init ──────────────────────────────────────────────────────────────────
+
+  async function initializePopup() {
+    await maybeShowWelcomeBanner();
+    document.getElementById("dismissWelcome").addEventListener("click", dismissWelcomeBanner);
+
+    // Main enable toggle
+    document.getElementById("enabled").addEventListener("change", persistSettings);
+
+    // Rescan
     document.getElementById("rescanButton").addEventListener("click", async () => {
       const result = await chrome.runtime.sendMessage({ type: "REQUEST_RESCAN" });
       setStatus(result?.ok ? "" : result?.reason || "ConsentLens could not scan this page.");
-      await refreshPageState();
-      await refreshNavigationState();
+      await refreshAll();
     });
 
+    // Navigation
     document.getElementById("prevMatchButton").addEventListener("click", () => navigate("previous"));
     document.getElementById("nextMatchButton").addEventListener("click", () => navigate("next"));
 
+    // Presets (2 only)
     document.getElementById("presetEssential").addEventListener("click", () => applyPreset("essential"));
-    document.getElementById("presetBalanced").addEventListener("click", () => applyPreset("balanced"));
     document.getElementById("presetEverything").addEventListener("click", () => applyPreset("everything"));
-    document.getElementById("saveCustomTermsButton").addEventListener("click", saveCustomTerms);
 
+    // Category checkboxes — each change triggers a rescan
+    CATEGORY_IDS.forEach((cat) => {
+      document.getElementById(`cat-${cat}`)?.addEventListener("change", persistSettings);
+    });
+
+    // Load state
     await syncInputs();
     const result = await chrome.runtime.sendMessage({ type: "REQUEST_RESCAN" });
     setStatus(result?.ok ? "" : result?.reason || "ConsentLens could not scan this page.");
-    await refreshPageState();
-    await refreshNavigationState();
+    await refreshAll();
   }
 
   if (document.readyState === "loading") {

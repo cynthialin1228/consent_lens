@@ -1,41 +1,31 @@
 {
   "manifest_version": 3,
   "name": "ConsentLens",
-  "version": "0.1.0",
-  "description": "Highlights important legal and consent terms on webpages using local analysis only.",
+  "version": "1.0.0",
+  "description": "Highlights risky legal and consent terms on webpages in plain language. Everything stays local — no data ever leaves your browser.",
+  "minimum_chrome_version": "102",
+  "icons": {
+    "16":  "assets/icon16.png",
+    "32":  "assets/icon32.png",
+    "48":  "assets/icon48.png",
+    "128": "assets/icon128.png"
+  },
   "permissions": [
     "storage",
     "activeTab",
     "scripting"
-  ],
-  "host_permissions": [
-    "<all_urls>"
   ],
   "background": {
     "service_worker": "src/background/service-worker.js"
   },
   "action": {
     "default_title": "ConsentLens",
-    "default_popup": "src/popup/popup.html"
-  },
-  "content_scripts": [
-    {
-      "matches": [
-        "<all_urls>"
-      ],
-      "js": [
-        "src/shared/constants.js",
-        "src/shared/terms-dictionary.js",
-        "src/shared/settings.js",
-        "src/content/scanner.js",
-        "src/content/highlighter.js",
-        "src/content/tooltip.js",
-        "src/content/content.js"
-      ],
-      "css": [
-        "src/content/content.css"
-      ],
-      "run_at": "document_idle"
+    "default_popup": "src/popup/popup.html",
+    "default_icon": {
+      "16":  "assets/icon16.png",
+      "32":  "assets/icon32.png",
+      "48":  "assets/icon48.png",
+      "128": "assets/icon128.png"
     }
-  ]
+  }
 }
